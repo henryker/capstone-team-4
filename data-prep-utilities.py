@@ -108,12 +108,12 @@ def from_polars_to_pandas(case_ids: pl.DataFrame, df) -> pl.DataFrame:
         df.filter(pl.col("case_id").is_in(case_ids))["target"].to_pandas()
     )
 
-def train_val_test_split(train_df):
+def train_val_test_split(train_df, train_split=0.9, val_split=0.5):
     # the following code is mostly copied from contest creator starter notebook
     # although it has been changed to facilitate functional programming
     case_ids = train_df["case_id"].unique().shuffle(seed=1)
-    case_ids_train, case_ids_test = train_test_split(case_ids, train_size=0.9, random_state=1)
-    case_ids_val, case_ids_test = train_test_split(case_ids_test, train_size=0.5, random_state=1)
+    case_ids_train, case_ids_test = train_test_split(case_ids, train_size=train_split, random_state=1)
+    case_ids_val, case_ids_test = train_test_split(case_ids_test, train_size=val_split, random_state=1)
     
     
     base_train, X_train, y_train = from_polars_to_pandas(case_ids_train, train_df)
