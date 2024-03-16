@@ -1,5 +1,5 @@
 import polars as pl
-
+import os
 
 
 # helper function from contest creator starter notebook
