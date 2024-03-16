@@ -1,5 +1,7 @@
 import polars as pl
+import pandas as pd
 import os
+from sklearn.model_selection import train_test_split
 
 
 # helper function from contest creator starter notebook
@@ -79,3 +81,50 @@ def load_all_dfs(datasets):
         train_base = train_base.join(train[dataset], how='left', on='case_id')
         test_base = test_base.join(test[dataset], how='left', on='case_id')
     return train_base, test_base
+
+
+
+# from contest creator starter notebook
+def convert_strings(df: pd.DataFrame) -> pd.DataFrame:
+    for col in df.columns:  
+        if df[col].dtype.name in ['object', 'string']:
+            df[col] = df[col].astype("string").astype('category')
+            current_categories = df[col].cat.categories
+            new_categories = current_categories.to_list() + ["Unknown"]
+            new_dtype = pd.CategoricalDtype(categories=new_categories, ordered=True)
+            df[col] = df[col].astype(new_dtype)
+    return df
+
+
+# from contest creator starter notebook
+def from_polars_to_pandas(case_ids: pl.DataFrame, df) -> pl.DataFrame:
+    cols_pred = []
+    for col in df.columns:
+        if col[-1].isupper() and col[:-1].islower():
+            cols_pred.append(col)
+    return (
+        df.filter(pl.col("case_id").is_in(case_ids))[["case_id", "WEEK_NUM", "target"]].to_pandas(),
+        df.filter(pl.col("case_id").is_in(case_ids))[cols_pred].to_pandas(),
+        df.filter(pl.col("case_id").is_in(case_ids))["target"].to_pandas()
+    )
+
+def train_val_test_split(train_df):
+    # the following code is mostly copied from contest creator starter notebook
+    # although it has been changed to facilitate functional programming
+    case_ids = train_df["case_id"].unique().shuffle(seed=1)
+    case_ids_train, case_ids_test = train_test_split(case_ids, train_size=0.9, random_state=1)
+    case_ids_val, case_ids_test = train_test_split(case_ids_test, train_size=0.5, random_state=1)
+    
+    
+    base_train, X_train, y_train = from_polars_to_pandas(case_ids_train, train_df)
+    base_val, X_val, y_val = from_polars_to_pandas(case_ids_val, train_df)
+    base_test, X_test, y_test = from_polars_to_pandas(case_ids_test, train_df)
+    
+    for df in [X_train, X_val, X_test]:
+        df = convert_strings(df)
+    
+    return (
+        (base_train, X_train, y_train), 
+        (base_val, X_val, y_val), 
+        (base_test, X_test, y_test)
+    )
